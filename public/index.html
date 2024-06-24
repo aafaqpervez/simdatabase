@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        form {
+            display: flex;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        input[type="search"] {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #results-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none; /* Initially hidden */
+        }
+
+        .result {
+            margin-bottom: 20px;
+        }
+
+        .result h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .result p {
+            margin: 5px 0;
+        }
+
+        .result hr {
+            margin-top: 10px;
+            border: none;
+            border-top: 1px solid #ccc;
+        }
+
+        /* Circular multi-color loader style */
+        #loader {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Multi-color segments */
+        @keyframes multiColorLoader {
+            0% {
+                border-top-color: #3498db;
+            }
+            25% {
+                border-top-color: #e74c3c;
+            }
+            50% {
+                border-top-color: #f1c40f;
+            }
+            75% {
+                border-top-color: #2ecc71;
+            }
+            100% {
+                border-top-color: #3498db;
+            }
+        }
+
+        #loader {
+            animation: spin 1s linear infinite, multiColorLoader 4s linear infinite;
+        }
+
+        /* Buttons for download */
+        .download-buttons {
+            display: none; /* Initially hidden */
+            margin-top: 20px;
+        }
+
+        .download-buttons button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <form action="/search" method="post" class="custom-search-from" id="search-form">
+        <input type="search" class="search-field" placeholder="Enter CNIC or Mobile Number" name="searchdata" id="searchdata" data-last-active-input="">
+        <input type="hidden" name="type" id="type" value="get_number_data">
+        <button class="search-submit" type="submit" aria-label="Search">
+            <span class="gp-icon icon-search">
+                Search
+            </span>
+        </button>
+    </form>
+    <h1>Search Results</h1>
+    <div id="results-container"></div>
+
+    <!-- Loader element -->
+    <div id="loader"></div>
+
+    <!-- Download buttons -->
+    <div class="download-buttons">
+        <button id="download-pdf">Download as PDF</button>
+        <button id="download-jpg">Download as JPG</button>
+    </div>
+
+    <script>
+        // Function to fetch search results from the server
+        async function fetchSearchResults(searchData) {
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ searchdata: searchData })
+            });
+
+            return response.json();
+        }
+
+        // Function to display search results on the webpage
+        async function displayResults() {
+            const searchInput = document.getElementById('searchdata').value.trim();
+            if (!searchInput) {
+                alert('Please enter search data');
+                return;
+            }
+
+            // Clear previous results
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = '';
+            resultsContainer.style.display = 'none';
+
+            // Hide download buttons
+            const downloadButtons = document.querySelector('.download-buttons');
+            downloadButtons.style.display = 'none';
+
+            // Show loader
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+
+            try {
+                const results = await fetchSearchResults(searchInput);
+
+                // Hide loader
+                loader.style.display = 'none';
+
+                // Display new results
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<p>No results found</p>';
+                } else {
+                    const title = document.createElement('h2');
+                    title.textContent = `Sim data for: ${searchInput}`;
+                    resultsContainer.appendChild(title);
+
+                    results.forEach(result => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.classList.add('result');
+                        resultDiv.innerHTML = `
+                            <h3>${result.fullName}</h3>
+                            <p><strong>Phone:</strong> ${result.phone}</p>
+                            <p><strong>CNIC:</strong> ${result.cnic}</p>
+                            <p><strong>Address:</strong> ${result.address}</p>
+                            <hr>
+                        `;
+                        resultsContainer.appendChild(resultDiv);
+                    });
+                }
+
+                resultsContainer.style.display = 'block';
+                downloadButtons.style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching search results:', error);
+                alert('An error occurred while fetching search results');
+                // Hide loader in case of error
+                loader.style.display = 'none';
+            }
+        }
+
+        // Function to download results as PDF
+        function downloadAsPDF() {
+            const searchInput = document.getElementById('searchdata').value.trim();
+            const resultsContainer = document.getElementById('results-container');
+            const doc = new jsPDF();
+
+            doc.setFontSize(18);
+            doc.text(`Sim data for: ${searchInput}`, 10, 10);
+
+            const results = resultsContainer.querySelectorAll('.result');
+            let yOffset = 20;
+            results.forEach((result, index) => {
+                const fullName = result.querySelector('h3').textContent;
+                const phone = result.querySelector('p:nth-child(2)').textContent;
+                const cnic = result.querySelector('p:nth-child(3)').textContent;
+                const address = result.querySelector('p:nth-child(4)').textContent;
+
+                doc.setFontSize(16);
+                doc.text(`Result ${index + 1}`, 10, yOffset);
+                yOffset += 10;
+                doc.setFontSize(14);
+                doc.text(`Full Name: ${fullName}`, 10, yOffset);
+                yOffset += 10;
+                doc.text(phone, 10, yOffset);
+                yOffset += 10;
+                doc.text(cnic, 10, yOffset);
+                yOffset += 10;
+                doc.text(address, 10, yOffset);
+                yOffset += 20;
+            });
+
+            doc.save('results.pdf');
+        }
+
+        // Function to download results as JPG
+        function downloadAsJPG() {
+            const resultsContainer = document.getElementById('results-container');
+            html2canvas(resultsContainer).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/jpeg');
+                link.download = 'results.jpg';
+                link.click();
+            });
+        }
+
+        // Event listener for form submission
+        document.getElementById('search-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent form submission
+            displayResults(); // Call displayResults function when form is submitted
+        });
+
+        // Event listeners for download buttons
+        document.getElementById('download-pdf').addEventListener('click', downloadAsPDF);
+        document.getElementById('download-jpg').addEventListener('click', downloadAsJPG);
+    </script>
+    <!-- Include html2canvas and jsPDF libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+</body>
+</html>
