@@ -33,18 +33,17 @@ app.post('/search', async (req, res) => {
 
   let browser;
   try {
-    if (chromium) {
-      browser = await puppeteer.launch({
-        args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
-        headless: chromium.headless,
-        ignoreHTTPSErrors: true,
-      });
-    } else {
-      browser = await puppeteer.launch();
-    }
+    const launchOptions = process.env.AWS_LAMBDA_FUNCTION_VERSION
+      ? {
+          args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath,
+          headless: chromium.headless,
+          ignoreHTTPSErrors: true,
+        }
+      : {};
 
+    browser = await puppeteer.launch(launchOptions);
     const page = await browser.newPage();
     await page.goto('https://simownerdata.pk');
     await page.type('#searchdata', searchdata);
